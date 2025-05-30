@@ -1,0 +1,48 @@
+name: Test and run Flask Web Server
+
+on:
+  push:
+    branches: ["main"]
+
+jobs:
+  testing:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Prepare Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      - name: Prepare dependencies
+        run: |
+          python -m pip install -upgrade pip
+          pip install -r requirements.txt --force-reinstall
+
+      - name: Testing with pytest
+        run: |
+          python -m pytest unit_test.py -v
+        env:
+          FLASK_APP: app.py
+
+  build-push:
+    needs: testing
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build & Push
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/exam:latest
+            ${{ secrets.DOCKER_USERNAME }}/exam:${{ github.sha }}
